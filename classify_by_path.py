@@ -29,14 +29,23 @@ class Classify(object):
             y = graph.get_tensor_by_name('output:0')
             str_info = []
             t_1 = time.time()
+
+            with open('tmp/fast_zhu_result.txt', 'r') as f:
+                processed_pfds = np.genfromtxt('tmp/fast_zhu_result.txt', dtype=[('fn', '|S200'), ('s', 'f')])
+                processed_pfds_set = set(processed_pfds['fn'])
+                print 'we already classified ', len(processed_pfds_set), 'files'
+
             with open('tmp/fast_zhu_result.txt', 'a') as f:
 
                 allpfds = glob.glob(self.path + '*.pfd')
                 pb = PB(maxValue=len(allpfds))
-                for i, pfd in enumerate(allpfds):
+                allpfds_set = set(allpfds)
+                to_process_set = allpfds_set - processed_pfds_set
+                print len(to_process_set), 'files to be classified.'
+
+                for i, pfd in enumerate(sorted(list(to_process_set))):
                     #print pfd 
                     apfd = pfdreader(pfd)
-
 
                     #TvP = apfd.getdata(intervals=64).reshape(64, 64)
                     #new_TvP = np.array(TvP)
