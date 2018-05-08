@@ -6,6 +6,7 @@ import time
 sys.path.append("..")
 sys.path.append("../..")
 from ubc_AI.data import pfdreader
+from ProgressBar import progressBar as PB
 
 
 class Classify(object):
@@ -28,33 +29,54 @@ class Classify(object):
             y = graph.get_tensor_by_name('output:0')
             str_info = []
             t_1 = time.time()
-            for file in glob.glob(self.path + '*.pfd'):
-                print file
-                apfd = pfdreader(file)
-                TvP = apfd.getdata(intervals=64).reshape(64, 64)
-                new_TvP = np.array(TvP)
-                data_TvP = np.empty([1, 64, 64, 1])
-                data_TvP[0, :, :, 0] = new_TvP
-                FvP = apfd.getdata(subbands=64).reshape(64, 64)
-                new_FvP = np.array(FvP)
-                data_FvP = np.empty([1, 64, 64, 1])
-                data_FvP[0, :, :, 0] = new_FvP
-                profile = apfd.getdata(phasebins=64)
-                new_profile = np.array(profile)
-                data_profile = np.empty([1, 64, 1])
-                data_profile[0, :, 0] = np.transpose(new_profile)
-                dmb = apfd.getdata(DMbins=64)
-                new_dmb = np.array(dmb)
-                data_dmb = np.empty([1, 64, 1])
-                data_dmb[0, :, 0] = np.transpose(new_dmb)
-                result = sess.run(y, feed_dict={fvp: data_FvP, tvp: data_TvP, dm: data_dmb, pro: data_profile,
-                                                rate: 0, training: False})
-                # label = np.argmax(result, 1)
-                proba = np.float32(result[0][1])
-                str_info = file + '.png ' + str(proba) + '\n'
-                # str_info = file + ': ' + str(label) + '\n'
-                with open('tmp/fast_zhu_result.txt', 'a') as f:
+            with open('tmp/fast_zhu_result.txt', 'a') as f:
+
+                allpfds = glob.glob(self.path + '*.pfd')
+                pb = PB(maxValue=len(allpfds))
+                for i, pfd in enumerate(allpfds):
+                    #print pfd 
+                    apfd = pfdreader(pfd)
+
+
+                    #TvP = apfd.getdata(intervals=64).reshape(64, 64)
+                    #new_TvP = np.array(TvP)
+                    #data_TvP = np.empty([1, 64, 64, 1])
+                    #data_TvP[0, :, :, 0] = new_TvP
+                    #FvP = apfd.getdata(subbands=64).reshape(64, 64)
+                    #new_FvP = np.array(FvP)
+                    #data_FvP = np.empty([1, 64, 64, 1])
+                    #data_FvP[0, :, :, 0] = new_FvP
+                    #profile = apfd.getdata(phasebins=64)
+                    #new_profile = np.array(profile)
+                    #data_profile = np.empty([1, 64, 1])
+                    #data_profile[0, :, 0] = np.transpose(new_profile)
+                    #dmb = apfd.getdata(DMbins=64)
+                    #new_dmb = np.array(dmb)
+                    #data_dmb = np.empty([1, 64, 1])
+                    #data_dmb[0, :, 0] = np.transpose(new_dmb)
+
+                    res = apfd.getdata(intervals=64, subbands=64, phasebins=64, DMbins=64)
+
+                    data_TvP = np.empty([1, 64, 64, 1])
+                    data_TvP[0, :, :, 0] = res[0:4096].reshape((64,64))
+                    data_FvP = np.empty([1, 64, 64, 1])
+                    data_FvP[0, :, :, 0] = res[4096:8192].reshape((64,64))
+                    data_profile = np.empty([1, 64, 1])
+                    data_profile[0, :, 0] = res[8192:8256]
+                    data_dmb = np.empty([1, 64, 1])
+                    data_dmb[0, :, 0] = res[8256:8320]
+
+                    result = sess.run(y, feed_dict={fvp: data_FvP, tvp: data_TvP, dm: data_dmb, pro: data_profile,
+                                                    rate: 0, training: False})
+                    # label = np.argmax(result, 1)
+                    proba = np.float32(result[0][1])
+                    str_info = pfd + '.png ' + str(proba) + '\n'
+                    # str_info = pfd + ': ' + str(label) + '\n'
                     f.write(str_info)
+
+                    if i % 10 == 0:
+                        pb(i)
+
             t_2 = time.time() - t_1
             print('Classifying complete in {:.0f} m {:.0f} s'.format(t_2 // 60, t_2 % 60))
 
