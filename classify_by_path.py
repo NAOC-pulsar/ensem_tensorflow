@@ -79,7 +79,7 @@ class Classify(object):
                                                     rate: 0, training: False})
                     # label = np.argmax(result, 1)
                     proba = np.float32(result[0][1])
-                    str_info = pfd + '.png ' + str(proba) + '\n'
+                    str_info = pfd + str(proba) + '\n'
                     # str_info = pfd + ': ' + str(label) + '\n'
                     f.write(str_info)
 
