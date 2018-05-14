@@ -80,12 +80,9 @@ class Classify(object):
                                                     rate: 0, training: False})
                     # label = np.argmax(result, 1)
                     proba = np.float32(result[0][1])
-<<<<<<< HEAD
+
                     str_info = pfd + ' ' + str(proba) + '\n'
-=======
-                    str_info = pfd + str(proba) + '\n'
->>>>>>> 36d617f6c8f1f1aec5fb4bf9c0f56492c6313c58
-                    # str_info = pfd + ': ' + str(label) + '\n'
+
                     f.write(str_info)
 
                     if i % 10 == 0:
