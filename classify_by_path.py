@@ -10,8 +10,9 @@ from ProgressBar import progressBar as PB
 
 
 class Classify(object):
-    def __init__(self, path):
+    def __init__(self, path, txt_file):
         self.path = path
+        self.txt_file = txt_file
 
     def classify_by_path(self):
 
@@ -27,15 +28,15 @@ class Classify(object):
             rate = graph.get_tensor_by_name('rate:0')
             training = graph.get_tensor_by_name('is_training:0')
             y = graph.get_tensor_by_name('output:0')
-            str_info = []
+            # str_info = []
             t_1 = time.time()
 
-            with open('tmp/fast_zhu_result.txt', 'r') as f:
-                processed_pfds = np.genfromtxt('tmp/fast_zhu_result.txt', dtype=[('fn', '|S200'), ('s', 'f')])
+            with open(self.txt_file, 'r') as f:
+                processed_pfds = np.genfromtxt(self.txt_file, dtype=[('fn', '|S200'), ('s', 'f')])
                 processed_pfds_set = set(processed_pfds['fn'])
                 print 'we already classified ', len(processed_pfds_set), 'files'
 
-            with open('tmp/fast_zhu_result.txt', 'a') as f:
+            with open(self.txt_file, 'a') as f:
 
                 allpfds = glob.glob(self.path + '*.pfd')
                 pb = PB(maxValue=len(allpfds))
@@ -79,7 +80,7 @@ class Classify(object):
                                                     rate: 0, training: False})
                     # label = np.argmax(result, 1)
                     proba = np.float32(result[0][1])
-                    str_info = pfd + '.png ' + str(proba) + '\n'
+                    str_info = pfd + ' ' + str(proba) + '\n'
                     # str_info = pfd + ': ' + str(label) + '\n'
                     f.write(str_info)
 
@@ -92,6 +93,7 @@ class Classify(object):
 if __name__ == '__main__':
 
     path = '/data/public/AI_data/PRESTO/*/'
+    txt_file = 'tmp/fast_zhu_result.txt'
     # path = '/data/whf/AI/training/GBNCC_ARCC_rated/'
-    cls = Classify(path)
+    cls = Classify(path, txt_file)
     cls.classify_by_path()
