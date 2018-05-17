@@ -68,9 +68,9 @@ def merge_model(model1, model2, model3, model4, rate=0.):
         model_fc_1 = tf.layers.dense(model_drop_1, 512)
         mode_drop_2 = tf.layers.dropout(model_fc_1, rate=rate)
         logits = tf.layers.dense(mode_drop_2, 2)
-        output = tf.nn.softmax(logits)
+        # output = tf.nn.softmax(logits)
 
-    return output
+    return logits
 
 
 # image_size = 64

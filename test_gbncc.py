@@ -4,17 +4,23 @@ import sys
 sys.path.append('..')
 sys.path.append('../..')
 from ubc_AI.data import pfdreader
+from itertools import chain
+import cPickle
 
 class Classify(object):
     def __init__(self, file):
         self.file = file
     def read_txt(self):
         with open(self.file, 'r') as f:
-            data = np.genfromtxt(self.file, dtype=[('fn', '|S200'), ('label', int)])
-            self.new_file = []
-            self.label = np.vstack(data['label'])
-            for file in data['fn']:
-                self.new_file.append('/data/whf/AI/training/GBNCC_ARCC_rated/GBNCC_beams/' + file)
+            pfd_found = np.genfromtxt(self.file, dtype=str)
+            self.pfdfiles = pfd_found[..., 0]
+
+            self.cands = np.asarray(pfd_found[..., 1], dtype=int)
+            self.pulsars = np.where(self.cands == 1)
+            self.harmonics = np.where(self.cands == 2)
+            totalsize = len(self.cands)
+            print '%s pfd found, %s pulsars, %s harmonics.' % (len(self.cands),
+                                                               self.pulsars[0].size, self.harmonics[0].size)
     def classify_gbncc(self):
         with tf.Session(config=tf.ConfigProto(allow_soft_placement=True)) as sess:
             ckpt = tf.train.get_checkpoint_state('tmp/checkpoints/')
@@ -29,8 +35,9 @@ class Classify(object):
             training = graph.get_tensor_by_name('is_training:0')
             y = graph.get_tensor_by_name('output:0')
             self.predict = []
-            for pfd in self.new_file:
-                apfd = pfdreader(pfd)
+            pfd_path = '/data/whf/AI/training/GBNCC_ARCC_rated/GBNCC_beams/'
+            for pfd in self.pfdfiles:
+                apfd = pfdreader(pfd_path + pfd)
                 res = apfd.getdata(intervals=64, subbands=64, phasebins=64, DMbins=64)
                 data_TvP = np.empty([1, 64, 64, 1])
                 data_TvP[0, :, :, 0] = res[0:4096].reshape((64, 64))
@@ -43,15 +50,27 @@ class Classify(object):
 
                 result = sess.run(y, feed_dict={fvp: data_Fvp, tvp: data_TvP, dm: data_dmb, profile: data_profile,
                                                 rate: 0, training: False})
-                self.predict.append(np.argmax(result, 1))
+                prob = (result[0][1]-0.26)/(0.74 - 0.26)
+                self.predict.append(prob)
+        def flatten(listOfLists):
+            return chain.from_iterable(listOfLists)
+        cand_scores = np.array(list(flatten([self.predict])))
+        psr_scores = cand_scores[self.pulsars]
+        harmonic_scores = cand_scores[self.harmonics]
+        result = {'cand_scores': cand_scores, 'psr_scores': psr_scores, 'harmonic_scores': harmonic_scores,
+                  'cands': self.cands, 'pulsars': self.pulsars, 'harmonics': self.harmonics, 'pfdfiles': self.pfdfiles}
+        cPickle.dump(result, open('tmp/scores_ensemble_GBNCC.pkl', 'wb'), protocol=2)
+        print 'done, result saved to ./scores_ensemble_GBNCC.pkl'
 
-        pre_result = np.array(self.predict, dtype=int)
-        count = np.equal(self.label, pre_result)
-        right_res = np.sum(count)
-        print right_res
+        fo = open('tmp/gbncc_prob.txt', 'w')
+        for i, f in enumerate(self.pfdfiles):
+            fo.write('%s %s %s\n' % (f, self.cands[i], self.predict[i]))
+        fo.close()
+
 
 if __name__ == "__main__":
-    txt_file = 'tmp/gbncc_100.txt'
+    txt_file = '/data/whf/AI/training/ARCC_test/pfd_correct.txt'
+    # txt_file = 'tmp/gbncc_100.txt'
     cls = Classify(txt_file)
     cls.read_txt()
     cls.classify_gbncc()
